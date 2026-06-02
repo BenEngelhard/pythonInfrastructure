@@ -7,39 +7,61 @@ from Experiment_Launcher_code.ModuleConfiguration import __FRAME_RATE_ONLY
 
 
 FunctionEntries = {}
-FrameAveragePeriodStart = 0
+AveragePeriodStart = 0
 FrameCounter = 0
 IdleLoopsCounter = 0
 FunctionStartTime = {}
 FunctionName = []
 FunctionTime = []
+MainLoopHandlingTime = []
+MainLoopStartTime = 0
 
 def IdleLoop():
     global IdleLoopsCounter
-
     IdleLoopsCounter += 1
 
 def NewFrame():
-    global FrameCounter, FrameAveragePeriodStart
-    global FunctionName, FunctionTime, IdleLoopsCounter
-
-    if FrameAveragePeriodStart == 0:   # first period starts on first frame
-        FrameAveragePeriodStart = time.time()
-
+    global FrameCounter
     FrameCounter += 1
-    period = time.time() - FrameAveragePeriodStart
+
+def EnterMainLoop():
+    global FrameCounter, AveragePeriodStart
+    global FunctionName, FunctionTime, IdleLoopsCounter
+    global MainLoopStartTime, MainLoopHandlingTime
+
+    if AveragePeriodStart == 0:   # first period starts
+        AveragePeriodStart = time.time()
+
+    if MainLoopStartTime == 0:
+        MainLoopStartTime = time.time()
+    else:
+        print(f'Code Profiler Error. Main loop handling routine missing exit point')
+
+    period = time.time() - AveragePeriodStart
     if period > 20:
         framerate = FrameCounter/period
         idleloops = IdleLoopsCounter/period
         print(f'Frame Rate= : {framerate:.2f}')
         print(f'Idle Loops= : {idleloops:.2f}')
-        FrameAveragePeriodStart = time.time()
+        MainLoopCPUUsage = sum(MainLoopHandlingTime) / period * 100
+        print(f'CPU usage= : {MainLoopCPUUsage:.2f}')
+        MainLoopHandlingTime = []
+        AveragePeriodStart = time.time()
         FrameCounter = 0
         IdleLoopsCounter = 0
         CalculateFunctionAverages(period)
         for index in range(len(FunctionTime)):
             if FunctionTime[index] > 0:
                 print(f'CPU usage: {FunctionName[index]}, {FunctionTime[index]:.2e}%')
+
+def ExitMainLoop():
+    global MainLoopStartTime, MainLoopHandlingTime
+
+    if MainLoopStartTime == 0:
+        print(f'Code Profiler Error. Main loop handling routine missing entry point')
+    else:
+        MainLoopHandlingTime.append(time.time() - MainLoopStartTime)
+        MainLoopStartTime = 0
 
 def EnterFunction(name):
     global FunctionStartTime

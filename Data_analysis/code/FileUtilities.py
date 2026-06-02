@@ -22,15 +22,19 @@ def set_project_directory(path):
     else:
         return False
 
-
 def get_project_directory():
+    path = 'Error'
     try:
         with open("./ProjectDirectory.txt", 'r') as file:
             path = file.read()
     except FileNotFoundError:
-        path = ""
-    return path
-
+        messagebox.showerror('Directory Error', 'Project directory undefined')
+    else:
+        if not (os.path.exists(path) and os.path.isdir(path)):
+            messagebox.showerror('Directory Error', 'Project directory does not exist')
+            path = 'Error'
+    finally:
+        return path
 
 def set_experiment_directory(experiment_name):
     global experiment, project_directory
@@ -130,4 +134,37 @@ def save_detection_regions(regions):
     filepath = project_directory + '/DetectionRegions.json'
     with open(filepath, 'w') as file:
         json.dump(regions, file, indent=4)
+
+def load_system_configuration(version):
+    global project_directory
+
+    sys_par = {'version': 'Error'}
+    filepath = project_directory + '/SystemParameters.json'
+    try:
+        with open(filepath, 'r') as file:
+            sys_par = json.load(file)
+    except FileNotFoundError:
+        result = messagebox.askquestion("File Warning",
+                                        "System Parameters File does not exist. Create?",
+                                        icon='warning')
+        if result == "yes":
+            sys_par = {'version': 'Init'}
+    else:
+        if not sys_par.get('version') == version:
+            result = messagebox.askquestion("File Warning",
+                                            "System Parameters File is obsolete. Create?",
+                                            icon='warning')
+            if result == "yes":
+                sys_par = {'version': 'Init'}
+            else:
+                sys_par = {'version': 'Error'}
+    finally:
+        return sys_par
+
+def save_system_configuration(sys_par):
+    global project_directory
+
+    filepath = project_directory + '/SystemParameters.json'
+    with open(filepath, 'w') as file:
+        json.dump(sys_par, file, indent=4)
 
