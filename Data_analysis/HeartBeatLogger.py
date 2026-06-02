@@ -1,5 +1,5 @@
-import Data_analysis.FileUtilities as fUtile
-from Data_analysis.LoggerABC import BaseLogger
+import infrastructure.Data_analysis.FileUtilities as fUtile
+from infrastructure.Data_analysis.LoggerABC import BaseLogger
 
 class HeartBeatLogger(BaseLogger):
     def __init__(self):

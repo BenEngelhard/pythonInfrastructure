@@ -1,17 +1,17 @@
 import tkinter as tk
 from tkinter import filedialog
 import random
-from Experiment_Launcher_code.ModuleConfiguration import __USE_ARDUINO_SIM
+from infrastructure.ModuleConfiguration import __USE_ARDUINO_SIM
 if __USE_ARDUINO_SIM:
-    from Arduino_related_code.ArduinoDigitalSim import *
+    from infrastructure.Arduino_related_code.ArduinoDigitalSim import *
 else:
-    from Arduino_related_code.ArduinoDigital import *
+    from infrastructure.Arduino_related_code.ArduinoDigital import *
 
-from Arduino_related_code.ValveControl import ValveControl
-import Data_analysis.FileUtilities as fUtile
-from Video_analyser_code.VimbaCameraController import VimbaCameraController
+from infrastructure.Arduino_related_code.ValveControl import ValveControl
+import infrastructure.Data_analysis.FileUtilities as fUtile
+from infrastructure.Video_analyser_code.VimbaCameraController import VimbaCameraController
 import cv2
-from Video_analyser_code.VideoWriter import VideoWriter
+from infrastructure.Video_analyser_code.VideoWriter import VideoWriter
 import time
 
 
@@ -83,7 +83,7 @@ comport = "COM11"
 arduino = openComPort(comport)
 
 # Initialize video system
-can = None
+cam = None
 cv2.namedWindow('MouseCam', cv2.WINDOW_NORMAL)
 video_writer = None
 

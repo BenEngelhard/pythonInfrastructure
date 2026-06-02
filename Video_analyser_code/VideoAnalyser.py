@@ -1,11 +1,11 @@
 #from vmbpy import *
 import time
 import cv2
-from Video_analyser_code.VideoWriter import VideoWriter
-from Video_analyser_code.VideoMouseDetectorMOD import VideoMouseDetectorMOD
-from Video_analyser_code.VimbaCameraController import VimbaCameraController
-import Data_analysis.FileUtilities as fUtile
-import Data_analysis.CodeProfiler as Profiler
+from infrastructure.Video_analyser_code.VideoWriter import VideoWriter
+from infrastructure.Video_analyser_code.VideoMouseDetectorMOD import VideoMouseDetectorMOD
+from infrastructure.Video_analyser_code.VimbaCameraController import VimbaCameraController
+import infrastructure.Data_analysis.FileUtilities as fUtile
+import infrastructure.Data_analysis.CodeProfiler as Profiler
 
 class Video_Analyzer:
     def __init__(self):

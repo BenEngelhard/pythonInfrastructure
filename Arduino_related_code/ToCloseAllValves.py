@@ -1,4 +1,4 @@
-from Arduino_related_code.ArduinoDigital import ArduinoDigital
+from infrastructure.Arduino_related_code.ArduinoDigital import ArduinoDigital
 
 # Replace 'COM3' with the appropriate port name your Arduino is connected to.
 arduino = ArduinoDigital('COM11')

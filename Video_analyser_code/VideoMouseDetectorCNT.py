@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from Video_analyser_code.VideoMouseDetectorABC import VideoMouseDetector
+from infrastructure.Video_analyser_code.VideoMouseDetectorABC import VideoMouseDetector
 
 # This class detects presence of a mouse in a region of pixels.
 # The basic assumption is that the background is white and the mouse is black.

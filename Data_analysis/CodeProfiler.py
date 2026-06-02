@@ -3,7 +3,7 @@
 # will be accrued both to the calling and nested function.
 
 import time
-from Experiment_Launcher_code.ModuleConfiguration import __FRAME_RATE_ONLY
+from infrastructure.ModuleConfiguration import __FRAME_RATE_ONLY
 
 
 FunctionEntries = {}

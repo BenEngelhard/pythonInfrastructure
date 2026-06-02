@@ -1,8 +1,8 @@
-from Experiment_Launcher_code.ModuleConfiguration import __USE_ARDUINO_SIM
+from infrastructure.ModuleConfiguration import __USE_ARDUINO_SIM
 if __USE_ARDUINO_SIM:
-    import Arduino_related_code.ArduinoDigitalSim as Arduino
+    import infrastructure.Arduino_related_code.ArduinoDigitalSim as Arduino
 else:
-    import Arduino_related_code.ArduinoDigital as Arduino
+    import infrastructure.Arduino_related_code.ArduinoDigital as Arduino
 import time
 
 class ValveControl:

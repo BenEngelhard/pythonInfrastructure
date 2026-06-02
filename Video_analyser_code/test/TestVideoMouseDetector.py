@@ -2,11 +2,11 @@ import time
 import cv2
 import tkinter as tk
 
-from Video_analyser_code.VideoMouseDetectorMOD import VideoMouseDetectorMOD
-from Video_analyser_code.VideoMouseDetectorAVR import VideoMouseDetectorAVR
-from Video_analyser_code.VideoMouseDetectorCNT import VideoMouseDetectorCNT
-from Video_analyser_code.VimbaCameraController import VimbaCameraController
-import Data_analysis.CodeProfiler as Profiler
+from infrastructure.Video_analyser_code.VideoMouseDetectorMOD import VideoMouseDetectorMOD
+from infrastructure.Video_analyser_code.VideoMouseDetectorAVR import VideoMouseDetectorAVR
+from infrastructure.Video_analyser_code.VideoMouseDetectorCNT import VideoMouseDetectorCNT
+from infrastructure.Video_analyser_code.VimbaCameraController import (VimbaCameraController)
+import infrastructure.Data_analysis.CodeProfiler as Profiler
 
 
 def define_regions():

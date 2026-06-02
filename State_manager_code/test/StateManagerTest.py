@@ -1,6 +1,5 @@
-from State_manager_code.StateManager import StateManager
-from State_manager_code.StateManager import States
-from State_manager_code.StateManager import Events
+from infrastructure.State_manager_code.StateManager import StateManager
+from infrastructure.State_manager_code.StateManager import States
 
 ##### main
 events = 0

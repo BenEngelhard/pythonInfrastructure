@@ -1,12 +1,12 @@
-from Experiment_Launcher_code.ModuleConfiguration import __USE_ARDUINO_SIM
+from infrastructure.ModuleConfiguration import __USE_ARDUINO_SIM
 
 if __USE_ARDUINO_SIM:
-    import Arduino_related_code.ArduinoDigitalSim as Arduino
+    import infrastructure.Arduino_related_code.ArduinoDigitalSim as Arduino
 else:
-    import Arduino_related_code.ArduinoDigital as Arduino
+    import infrastructure.Arduino_related_code.ArduinoDigital as Arduino
 import time
 import numpy as np
-from Data_analysis.HeartBeatLogger import HeartBeatLogger
+from infrastructure.Data_analysis.HeartBeatLogger import HeartBeatLogger
 
 class HeartBeat:
     def __init__(self, DigitalChannel, mean_period_milliSec):

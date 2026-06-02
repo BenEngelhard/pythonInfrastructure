@@ -5,8 +5,8 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 import cv2
 import ctypes
-import Data_analysis.FileUtilities as fUtile
-from Video_analyser_code.VimbaCameraController import VimbaCameraController
+import infrastructure.Data_analysis.FileUtilities as fUtile
+from infrastructure.Video_analyser_code.VimbaCameraController import VimbaCameraController
 
 
 class ConfigureDetectionRegions:

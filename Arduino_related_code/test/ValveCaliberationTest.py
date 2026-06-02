@@ -1,7 +1,7 @@
 import tkinter as tk
 from threading import Thread
-from Arduino_related_code.ArduinoDigital import *
-from Arduino_related_code.ValveControl import ValveControl
+from infrastructure.Arduino_related_code.ArduinoDigital import *
+from infrastructure.Arduino_related_code.ValveControl import ValveControl
 import time
 
 def calibrate_valve(pin, duration_ms,opening_number):
