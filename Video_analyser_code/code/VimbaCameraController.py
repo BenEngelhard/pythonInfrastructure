@@ -6,9 +6,11 @@ from queue import Queue
 
 
 class VimbaCameraController:
-    def __init__(self):
+    def __init__(self, frame_rate=100):
+        self.frame_rate = frame_rate
         self.frame_queue = Queue(10)  # queue depth is 10, the vimba buffer is 5. no need to monitor queue full
         self.previous_frame_id = None
+        self.dropped_frames_counter = 0
         self.vimba = VmbSystem.get_instance()
         self.vimba.__enter__()
 
@@ -28,7 +30,7 @@ class VimbaCameraController:
         self.cam.Gain.set(15)
         self.cam.ExposureTime.set(3000)
         self.cam.DeviceLinkThroughputLimit.set(400000000)
-        self.cam.AcquisitionFrameRate.set(100)
+        self.cam.AcquisitionFrameRate.set(self.frame_rate)
         self.cam.LineSelector.set('Line1')      # Set Line 1 as output
         self.cam.LineMode.set('Output')
         self.cam.LineSource.set('ExposureActive')
@@ -55,7 +57,10 @@ class VimbaCameraController:
         self.previous_frame_id = frame.get_id()
         if dropped_frames != 0:
             print (f' {dropped_frames} frames dropped' )
-        #print ('frame handler completed')
+            self.dropped_frames_counter += dropped_frames
+
+    def get_dropped_frames(self):
+        return self.dropped_frames_counter
 
     def get_frame(self):
         # get frame from queue, if available, and process; otherwise, skip.

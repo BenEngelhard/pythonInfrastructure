@@ -1,215 +1,252 @@
 import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
+from PIL import Image, ImageTk
+import cv2
+import ctypes
 import Data_analysis.FileUtilities as fUtile
+from Video_analyser_code.VimbaCameraController import VimbaCameraController
 
 
-def populate_system_parameters_panel(panel, pdVar):
-    tk.Label(panel, text="Project Directory:").place(x=5, y=10)
-    pd_name_entry = tk.Entry(panel, width=60, textvariable=pdVar)
-    pd_name_entry.place(x=110, y=10)
-    pd_button = tk.Button(panel, text="Browse", command=browse_project_directory)
-    pd_button.place(x=485, y=5)
+class ConfigureDetectionRegions:
+    def __init__(self, roi_name_list):
+        ctypes.windll.shcore.SetProcessDpiAwareness(1) # disable window scaling
+        self.window = tk.Tk()
+        self.window.title("Prisoner's Dilemma - Detection Regions")
+        self.window.geometry("978x760")
+        self.window.focus_set()
+        self.detection_regions = {name: [0, (0, 0), (0, 0)] for name in roi_name_list}
+        self.canvas_rects = {name: [] for name in roi_name_list}
+        self.canvas_texts = {name: [] for name in roi_name_list}
+        # screen_width = window.winfo_screenwidth()    # future feature
+        # screen_height = window.winfo_screenheight()
+        self.cam = VimbaCameraController(50)
+        self.cam.start_video()
+        self.project_directory_var = None
+        self.save_conf_bt = None
+        self.video_canvas = None
+        self.img_id = None
+        self.roi_start_x = self.roi_start_y = 0  # ROI control variables
+        self.roi_names_combo = None
+        self.selected_roi = ''
+        self.calibrate_bt = None
+        self.save_conf_bt = None
+        self.gui_layout()
+        self.bind_gui_event()
 
-def browse_project_directory():
-    global project_directory_var, save_conf_bt
-    directory_path = filedialog.askdirectory(title="Select a directory")
-    if directory_path != "":
-        project_directory_var.set(directory_path)
-        save_conf_bt.config(state="normal")
+    def populate_system_parameters_panel(self, panel, pdVar):
+        tk.Label(panel, text="Project Directory:").place(x=5, y=10)
+        pd_name_entry = tk.Entry(panel, width=70, textvariable=pdVar)
+        pd_name_entry.place(x=150, y=10)
+        pd_button = tk.Button(panel, text="Browse", command=self.browse_project_directory)
+        pd_button.place(x=875, y=5)
 
-def draw_detection_canvas(panel, title, X, Y, geometry):
-    rwidth = 50 if geometry == 'n' else 100
-    rheight = 100 if geometry == 'n' else 80
-    titlex = 35 if geometry == 'n' else 55
-    titley = 50 if geometry == 'n' else 45
-    canvas = tk.Canvas(panel, width=rwidth, height=rheight, bg="white", bd=5, relief="ridge")
-    canvas.create_text(titlex, titley, text=title, font=("Arial", 10, "bold"), fill="blue")
-    canvas.place(x=X, y=Y)
+    def browse_project_directory(self):
+        directory_path = filedialog.askdirectory(title="Select a directory")
+        if directory_path != "":
+            self.project_directory_var.set(directory_path)
+            self.save_conf_bt.config(state="normal")
 
-def create_detection_set(panel, edit_vars, X, Y, geometry):
-    xOffset = 120 if geometry == 'n' else 170
-    yOffset = 115 if geometry == 'n' else 90
+    def save_conf_callback(self):
+        if self.verify_detection_regions():
+            fUtile.set_project_directory(self.project_directory_var.get())
+            fUtile.save_detection_regions(self.detection_regions)
 
-    tk.Label(panel, text="X:").place(x=X-55, y=Y-20)
-    tk.Entry(panel, width=5, textvariable=edit_vars[0][0]).place(x=X-35, y=Y-20)
-    tk.Label(panel, text="Y:").place(x=X-55, y=Y)
-    tk.Entry(panel, width=5, textvariable=edit_vars[0][1]).place(x=X-35, y=Y)
-    tk.Label(panel, text="X:").place(x=X-55+xOffset, y=Y-20+yOffset)
-    tk.Entry(panel, width=5, textvariable=edit_vars[1][0]).place(x=X-35+xOffset, y=Y-20+yOffset)
-    tk.Label(panel, text="Y:").place(x=X-55+xOffset, y=Y+yOffset)
-    tk.Entry(panel, width=5, textvariable=edit_vars[1][1]).place(x=X-35+xOffset, y=Y+yOffset)
+    def validate_value(self, edit_var):
+        # region coordinate must be a positive integer
+        try:
+            num = int(edit_var.get())
+        except ValueError:
+            num = -1
+        if num <= 0 or num > 800:
+            messagebox.showerror("Invalid Input", "region coordinate must be positive integer and < 800 ")
+            return False
+        return True
 
-def start_video_callback():
-    pass
+    def verify_detection_set(self, region_vars):
+        data_valid = True
+        for i in range(2):
+            for j in range(2):
+                if not self.validate_value(region_vars[i][j]):
+                    data_valid = False
 
-def stop_video_callback():
-    pass
-
-def save_conf_callback():
-    global project_directory_var, detection_regions
-
-    if verify_detection_regions():
-        detection_regions = get_detection_regions()
-        fUtile.set_project_directory(project_directory_var.get())
-        fUtile.save_detection_regions(detection_regions)
-
-def define_regions():
-    # Define the regions of interest (ROI) for each mouse and their specific zones
-    regions = {
-        'm1_c': [(445, 110), (480, 240)],  # Mouse 1 Cooperate Zone (Top Left)
-        'm1_cen': [(330, 260), (400, 330)],  # Mouse 1 Center Zone (Center Left)
-        'm1_d': [(425, 370), (470, 480)],  # Mouse 1 Defect Zone (Bottom Left)
-        'm2_c': [(525, 110), (565, 235)],  # Mouse 2 Cooperate Zone (Top Right)
-        'm2_cen': [(610, 260), (680, 330)],  # Mouse 2 Center Zone (Center Right)
-        'm2_d': [(515, 370), (550, 480)],  # Mouse 2 Defect Zone (Bottom Right)
-    }
-    return regions
-
-def get_detection_set(edit_vars):
-    return [(edit_vars[0][0].get(), edit_vars[0][1].get()), (edit_vars[1][0].get(), edit_vars[1][1].get())]
-
-def get_detection_regions():
-    global M1C_region_vars, M1Cen_region_vars, M1D_region_vars
-    global M2C_region_vars, M2Cen_region_vars, M2D_region_vars
-
-    # Update the regions of interest (ROI) for each mouse from the GUI fields
-    regions = {
-        'm1_c': get_detection_set(M1C_region_vars),
-        'm1_cen': get_detection_set(M1Cen_region_vars),
-        'm1_d': get_detection_set(M1D_region_vars),
-        'm2_c': get_detection_set(M2C_region_vars),
-        'm2_cen': get_detection_set(M2Cen_region_vars),
-        'm2_d': get_detection_set(M2D_region_vars),
-    }
-    return regions
-
-def init_detection_set(edit_vars, values):
-    for i in range(2):
-        for j in range(2):
-            edit_vars[i][j].set(values[i][j])
-
-def init_detection_regions():
-    global M1C_region_vars, M1Cen_region_vars, M1D_region_vars
-    global M2C_region_vars, M2Cen_region_vars, M2D_region_vars
-
-    init_detection_set(M1C_region_vars, detection_regions['m1_c'])
-    init_detection_set(M2C_region_vars, detection_regions['m2_c'])
-    init_detection_set(M1Cen_region_vars, detection_regions['m1_cen'])
-    init_detection_set(M2Cen_region_vars, detection_regions['m2_cen'])
-    init_detection_set(M1D_region_vars, detection_regions['m1_d'])
-    init_detection_set(M2D_region_vars, detection_regions['m2_d'])
-
-def validate_value(edit_var):
-    # region coordinate must be a positive integer
-    try:
-        num = int(edit_var.get())
-    except ValueError:
-        num = -1
-    if num <= 0 or num > 800:
-        messagebox.showerror("Invalid Input", "region coordinate must be positive integer and < 800 ")
-        return False
-    return True
-
-def verify_detection_set(region_vars):
-    data_valid = True
-    for i in range(2):
-        for j in range(2):
-            if not validate_value(region_vars[i][j]):
+        if data_valid:
+            if (region_vars[1][0].get() <= region_vars[0][0].get() or
+                region_vars[1][1].get() <= region_vars[0][1].get()):
+                messagebox.showerror("Invalid Input", "region must use X2 > X1 and Y2 > Y1")
                 data_valid = False
+        return data_valid
 
-    if data_valid:
-        if (region_vars[1][0].get() <= region_vars[0][0].get() or
-            region_vars[1][1].get() <= region_vars[0][1].get()):
-            messagebox.showerror("Invalid Input", "region must use X2 > X1 and Y2 > Y1")
-            data_valid = False
-    return data_valid
+    def update_video_frame(self):
+        frame = self.cam.get_frame()
+        if frame is not None:
+            frame_image = frame.as_opencv_image()
+            frame_rgb = cv2.cvtColor(frame_image, cv2.COLOR_BGR2RGB)
+            img_pil = Image.fromarray(frame_rgb)
+            img_tk = ImageTk.PhotoImage(img_pil)
+            self.video_canvas.img = img_tk
+            self.video_canvas.itemconfig(self.img_id, image=img_tk)
+            self.cam.free_frame(frame)  # return the buffer to the camera controller
+            #print(threading.current_thread().name)
+        self.window.after(1, self.update_video_frame)
 
-def verify_detection_regions():
-    global M1C_region_vars, M1Cen_region_vars, M1D_region_vars
-    global M2C_region_vars, M2Cen_region_vars, M2D_region_vars
+    def calibrate_callback(self):
+        pass
 
-    if not verify_detection_set(M1C_region_vars):
-        return False
-    if not verify_detection_set(M2C_region_vars):
-        return False
-    if not verify_detection_set(M1Cen_region_vars):
-        return False
-    if not verify_detection_set(M2Cen_region_vars):
-        return False
-    if not verify_detection_set(M1D_region_vars):
-        return False
-    if not verify_detection_set(M2D_region_vars):
-        return False
-    return True
+    # Mouse event handlers
+    def start_roi(self, event):   # mouse button pressed on canvas
+        if self.selected_roi != '':
+            self.roi_start_x = event.x
+            self.roi_start_y = event.y
 
+    def update_roi(self, event):   # mouse move, button pressed
+        if self.selected_roi != '':
+            rect_id = self.canvas_rects.get(self.selected_roi)
+            if not rect_id:
+                self.canvas_rects[self.selected_roi] = self.video_canvas.create_rectangle(self.roi_start_x, self.roi_start_y,
+                                                               event.x, event.y, outline="red", width=2)
+                self.canvas_texts[self.selected_roi] = self.video_canvas.create_text(self.roi_start_x, self.roi_start_y - 5,
+                                                                text=self.selected_roi, font=("Arial", 12), anchor="sw", fill="red")
+            else:
+                self.video_canvas.coords(rect_id, self.roi_start_x, self.roi_start_y, event.x, event.y)
+                text_id = self.canvas_texts.get(self.selected_roi)
+                self.video_canvas.coords(text_id, self.roi_start_x, self.roi_start_y)
 
-##############
-# main program
-##############
+    def end_roi(self, event):  # mouse button released
+        if self.selected_roi != '':
+            # Compute ROI coordinates in canvas/video frame coordinates
+            x0 = min(self.roi_start_x, event.x)
+            y0 = min(self.roi_start_y, event.y)
+            x1 = max(self.roi_start_x, event.x)
+            y1 = max(self.roi_start_y, event.y)
+            print(f"ROI coordinates: ({x0}, {y0}) -> ({x1}, {y1})")
 
-window = tk.Tk()
-window.title("Prisoner's Dilemma - Detection Regions")
-window.geometry("555x595")
+    # Keyboard event handlers
+    def on_up(self, event):
+        if self.selected_roi != '':
+            rect_id = self.canvas_rects.get(self.selected_roi)
+            if rect_id:
+                x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
+                x0, x1 = sorted((x0, x1))
+                y0, y1 = sorted((y0, y1))
+                if event.state & 0x0001:    # Shift pressed -> move up
+                    y0 = y0 - 1
+                    y1 = y1 - 1
+                else:                       # increase vertically
+                    y0 = y0 - 1
+                    y1 = y1 + 1
+                self.video_canvas.coords(rect_id, x0, y0, x1, y1)
 
-# create window layout
-system_panel = tk.Frame(window, width=545, height=40, relief=tk.RAISED, borderwidth=2)
-system_panel.place(x=5, y=5)
-configuration_panel = tk.Frame(window, width=545, height=505, relief=tk.RAISED, borderwidth=2)
-configuration_panel.place(x=5, y=50)
+    def on_down(self, event):
+        if self.selected_roi != '':
+            rect_id = rect_id = self.canvas_rects.get(self.selected_roi)
+            if rect_id:
+                x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
+                x0, x1 = sorted((x0, x1))
+                y0, y1 = sorted((y0, y1))
+                if event.state & 0x0001:  # Shift pressed -> move down
+                    y0 = y0 + 1
+                    y1 = y1 + 1
+                else:                       # decrease vertically
+                    y0 = y0 + 1
+                    y1 = y1 - 1
+                self.video_canvas.coords(rect_id, x0, y0, x1, y1)
 
-# Create entry variables
-project_directory_var = tk.StringVar(value=None)
-M1C_region_vars = ( (tk.StringVar(value=None), tk.StringVar(value=None)),
-                    (tk.StringVar(value=None), tk.StringVar(value=None)) )
-M2C_region_vars = ( (tk.StringVar(value=None), tk.StringVar(value=None)),
-                    (tk.StringVar(value=None), tk.StringVar(value=None)) )
-M1Cen_region_vars = ( (tk.StringVar(value=None), tk.StringVar(value=None)),
-                    (tk.StringVar(value=None), tk.StringVar(value=None)) )
-M2Cen_region_vars = ( (tk.StringVar(value=None), tk.StringVar(value=None)),
-                    (tk.StringVar(value=None), tk.StringVar(value=None)) )
-M1D_region_vars = ( (tk.StringVar(value=None), tk.StringVar(value=None)),
-                    (tk.StringVar(value=None), tk.StringVar(value=None)) )
-M2D_region_vars = ( (tk.StringVar(value=None), tk.StringVar(value=None)),
-                    (tk.StringVar(value=None), tk.StringVar(value=None)) )
+    def on_left(self, event):
+        if self.selected_roi != '':
+            rect_id = rect_id = self.canvas_rects.get(self.selected_roi)
+            if rect_id:
+                x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
+                x0, x1 = sorted((x0, x1))
+                y0, y1 = sorted((y0, y1))
+                if event.state & 0x0001:  # Shift pressed -> move left
+                    x0 = x0 - 1
+                    x1 = x1 - 1
+                else:                     # dec crease horizontally
+                    x0 = x0 + 1
+                    x1 = x1 - 1
+                self.video_canvas.coords(rect_id, x0, y0, x1, y1)
 
-# Populate Panels
-populate_system_parameters_panel(system_panel, project_directory_var)
-draw_detection_canvas(configuration_panel, 'M1C', 140, 30, 'n')
-draw_detection_canvas(configuration_panel, 'M2C', 320, 30, 'n')
-draw_detection_canvas(configuration_panel, 'M1Center', 50, 210, 'w')
-draw_detection_canvas(configuration_panel, 'M2Center', 360, 210, 'w')
-draw_detection_canvas(configuration_panel, 'M1D', 140, 360, 'n')
-draw_detection_canvas(configuration_panel, 'M2D', 320, 360, 'n')
+    def on_right(self, event):
+        if self.selected_roi != '':
+            rect_id = rect_id = self.canvas_rects.get(self.selected_roi)
+            if rect_id:
+                x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
+                x0, x1 = sorted((x0, x1))
+                y0, y1 = sorted((y0, y1))
+                if event.state & 0x0001:  # Shift pressed -> move right
+                    x0 = x0 + 1
+                    x1 = x1 + 1
+                else:                       # increase horizontally
+                    x0 = x0 - 1
+                    x1 = x1 + 1
+                self.video_canvas.coords(rect_id, x0, y0, x1, y1)
 
-create_detection_set(configuration_panel, M1C_region_vars,140, 30,'n')
-create_detection_set(configuration_panel, M2C_region_vars,320, 30,'n')
-create_detection_set(configuration_panel, M1Cen_region_vars,50, 210,'w')
-create_detection_set(configuration_panel, M2Cen_region_vars,360, 210, 'w')
-create_detection_set(configuration_panel, M1D_region_vars, 140, 360, 'n')
-create_detection_set(configuration_panel, M2D_region_vars, 320, 360, 'n')
+    def gui_layout(self):
+        # create window layout
+        system_panel = tk.Frame(self.window, width=968, height=60, relief=tk.RAISED, borderwidth=2)
+        system_panel.place(x=5, y=5)
 
-#create buttons
-start_video_bt = tk.Button(window, text="Start Video", command=start_video_callback)
-start_video_bt.place(x=100, y=560)
-stop_video_bt = tk.Button(window, text="Stop Video", command=stop_video_callback)
-stop_video_bt.place(x=400, y=560)
-save_conf_bt = tk.Button(window, text="Save Regions", command=save_conf_callback)
-save_conf_bt.place(x=250, y=560)
-save_conf_bt.config(state="disabled")
-stop_video_bt.config(state="disabled")
+        self.video_canvas = tk.Canvas(self.window, width=968, height=608)
+        self.video_canvas.place(x=5, y=70)
+        self.img_id = self.video_canvas.create_image(0, 0, anchor="nw")
 
-#verify project directory and load regions
-pd = fUtile.get_project_directory()
-detection_regions = define_regions()
-if pd != '':
-    project_directory_var.set(pd)
-    fUtile.set_project_directory(pd)
-    save_conf_bt.config(state="normal")
-    tmp = fUtile.load_detection_regions()
-    if tmp is not None:
-        detection_regions = tmp
+        control_panel = tk.Frame(self.window, width=968, height=60, relief=tk.RAISED, borderwidth=2)
+        control_panel.place(x=5, y=690)
 
-init_detection_regions()
+        # Create entry variables
+        self.project_directory_var = tk.StringVar(value=None)
 
-window.mainloop()
+        # Populate Panels
+        self.populate_system_parameters_panel(system_panel, self.project_directory_var)
+
+        #create buttons
+        self.calibrate_bt = tk.Button(control_panel, text="Calibrate", command=self.calibrate_callback)
+        self.calibrate_bt.place(x=870, y=5)
+        self.save_conf_bt = tk.Button(control_panel, text="Save", command=self.save_conf_callback)
+        self.save_conf_bt.place(x=770, y=5)
+        self.roi_names_combo = ttk.Combobox(control_panel,values=list(self.detection_regions.keys()))
+        self.roi_names_combo.place(x=500, y=15)
+        self.roi_names_combo.bind("<<ComboboxSelected>>", self.on_combo_selected)
+
+        self.update_video_frame()
+
+    def on_combo_selected(self, event):
+        self.selected_roi = self.roi_names_combo.get()
+
+        for name in self.canvas_rects:
+            rect_id = self.canvas_rects.get(name)
+            text_id = self.canvas_texts.get(name)
+            if rect_id is not None: # rect is defined
+                if name == self.selected_roi:
+                    self.video_canvas.itemconfig(rect_id, outline="red")
+                    self.video_canvas.itemconfig(text_id, fill="red")
+                else:
+                    self.video_canvas.itemconfig(rect_id, outline="white")
+                    self.video_canvas.itemconfig(text_id, fill="white")
+        self.window.focus_set()
+
+    def bind_gui_event(self):
+        # Bind mouse and keyboard event handlers
+        self.video_canvas.bind("<Button-1>", self.start_roi)  # left mouse button pressed
+        self.video_canvas.bind("<B1-Motion>", self.update_roi)  # mouse dragged with button 1
+        self.video_canvas.bind("<ButtonRelease-1>", self.end_roi)  # left mouse button released
+        self.window.bind("<Up>", self.on_up)
+        self.window.bind("<Down>", self.on_down)
+        self.window.bind("<Left>", self.on_left)
+        self.window.bind("<Right>", self.on_right)
+
+    def configure(self):
+        # verify project directory and load regions
+        pd = fUtile.get_project_directory()
+        if pd != '':
+            self.project_directory_var.set(pd)
+            fUtile.set_project_directory(pd)
+            self.save_conf_bt.config(state="normal")
+            tmp = fUtile.load_detection_regions()
+            if tmp is not None:
+                self.detection_regions = tmp
+
+        #self.create_canvas_regions()
+        self.window.mainloop()
