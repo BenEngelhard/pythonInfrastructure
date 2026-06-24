@@ -1,0 +1,129 @@
+#from vmbpy import *
+import time
+import cv2
+from infrastructure.Video_analyser_code.VideoWriter import VideoWriter
+from infrastructure.Video_analyser_code.VideoMouseDetectorMOD import VideoMouseDetectorMOD
+from infrastructure.Video_analyser_code.VimbaCameraController import VimbaCameraController
+import infrastructure.Data_analysis.FileUtilities as fUtile
+import infrastructure.Data_analysis.CodeProfiler as Profiler
+
+class Video_Analyzer:
+    def __init__(self):
+        # Initialize the Vimba SDK and VideoAnalyzer
+        self.video_file_loc=fUtile.get_file_path(0) + '_video.avi'
+        self.video_writer = VideoWriter(output_file=self.video_file_loc)
+        self.cam = VimbaCameraController()
+        self.regions = self.define_regions()
+        self.trial_start_time = 0
+        self.trial_end_time = None  # Initialize end time
+
+        cv2.namedWindow('MouseCam', cv2.WINDOW_NORMAL)
+        self.mouse_detector = [VideoMouseDetectorMOD() for _ in range(len(self.regions))]
+
+    def start_video(self):
+        self.trial_start_time = time.time()  # Initialize start time
+        self.cam.start_video()
+
+    def get_dropped_frames(self):
+        return self.cam.get_dropped_frames()
+
+    def define_regions(self):
+        # Define the regions of interest (ROI) for each mouse and their specific zones
+        regions = {
+            'm1_c': [(485, 145), (515, 215)],  # Mouse 2 Cooperate Zone (Top Left)
+            'm1_cen': [(355, 290), (410, 335)],  # Mouse 2 Center Zone (Center Left)
+            'm1_d': [(485, 410), (515, 480)],  # Mouse 2 Defect Zone (Bottom Left)
+            'm2_c': [(540, 145), (570, 215)],  # Mouse 1 Cooperate Zone (Top Right)
+            'm2_cen': [(635, 290), (690, 335)],  # Mouse 1 Center Zone (Center Right)
+            'm2_d': [(540, 410), (570, 480)],  # Adjusted Mouse 1 Defect Zone (Bottom Right)
+        }
+        return regions
+
+    def format_time(self,seconds):
+        # Helper function to format seconds into H:M:S format
+        m, s = divmod(seconds, 60)
+        h, m = divmod(m, 60)
+        return "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
+
+    def draw_rectangle_with_lines(self, frame, top_left, bottom_right, color, thickness):
+        # Unpack the top left and bottom right coordinates
+        x1, y1 = top_left
+        x2, y2 = bottom_right
+
+        # Draw four lines to form a rectangle
+        cv2.line(frame, (x1, y1), (x2, y1), color, thickness)  # Top edge
+        cv2.line(frame, (x1, y2), (x2, y2), color, thickness)  # Bottom edge
+        cv2.line(frame, (x1, y1), (x1, y2), color, thickness)  # Left edge
+        cv2.line(frame, (x2, y1), (x2, y2), color, thickness)  # Right edge
+
+    def draw_regions(self, frame, zone_activations):
+        for region_key in self.regions:
+            top_left, bottom_right = self.regions[region_key]
+
+            # set region color based on its activation status
+            index = list(self.regions.keys()).index(region_key)
+            color = 0 if zone_activations[index] == 1 else 255  # black if zone activated white if not
+            self.draw_rectangle_with_lines(frame, top_left, bottom_right, color,2)
+
+            # Prepare text for region name
+            region_name = region_key
+            text = f'{region_name}'
+
+            # Calculate position for the text (slightly inside the top-left corner of the rectangle)
+            text_pos = (top_left[0] + 5, top_left[1] + 20)
+
+            # Draw the text
+            cv2.putText(frame, text,text_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        return frame
+
+    def process_single_frame(self):
+        zone_activation = [0] * len(self.regions)
+
+        frame = self.cam.get_frame()
+        if frame is not None:
+            Profiler.NewFrame()
+            Profiler.EnterFunction('CV2 Get Image')
+            frame_image = frame.as_opencv_image()  # .copy()
+            # cam.free_frame(frame)  # return the buffer to the camera controller
+            Profiler.ExitFunction('CV2 Get Image')
+
+            for idx, region_key in enumerate(self.regions):
+                (x1, y1), (x2, y2) = self.regions[region_key]  # y is vertical dimension on the screen or matrix row
+                zone_image = frame_image[y1:y2, x1:x2]
+
+                Profiler.EnterFunction('New Frame')
+                self.mouse_detector[idx].new_frame(zone_image)
+                Profiler.ExitFunction('New Frame')
+
+                Profiler.EnterFunction('Mouse in Region')
+                zone_activation[idx] = self.mouse_detector[idx].is_mouse_in_region()
+                Profiler.ExitFunction('Mouse in Region')
+
+            time_since_trial_start = time.time() - self.trial_start_time
+
+            Profiler.EnterFunction('CV2 show image')
+            # Format and display trial information and elapsed time
+            frame_image = self.draw_regions(frame_image, zone_activation)
+            cv2.putText(frame_image, f"Since Start: {self.format_time(time_since_trial_start)}", (10, 70),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+
+            cv2.imshow('MouseCam', frame_image)
+            #cv2.waitKey(1)  # allow imshow() to manage the window. -> Looks like TK is covering for it.
+            Profiler.ExitFunction('CV2 show image')
+            self.cam.free_frame(frame)   #return the buffer to the camera controller
+
+            Profiler.EnterFunction('Write Frame')
+            self.video_writer.write_frame(frame_image)
+            Profiler.ExitFunction('Write Frame')
+        else:
+            Profiler.IdleLoop()
+
+        return zone_activation
+
+    def close_resources(self):
+        # Close the video writer and any other resources
+        self.cam.close_resources()
+        self.video_writer.close()
+        cv2.destroyAllWindows()
+
