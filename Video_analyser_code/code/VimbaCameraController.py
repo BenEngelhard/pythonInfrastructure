@@ -38,10 +38,43 @@ class VimbaCameraController:
         opencv_formats = intersect_pixel_formats(formats, OPENCV_PIXEL_FORMATS)
         self.cam.set_pixel_format(opencv_formats[0])
         self.cam.AcquisitionMode.set('Continuous')
+        self._streaming = False
 
     def start_video(self):
         self.trial_start_time = time.time()  # Initialize start time
-        self.cam.start_streaming(handler = self.frame_handler)
+        if not self._streaming:
+            self.cam.start_streaming(handler=self.frame_handler)
+            self._streaming = True
+
+    def stop_video(self):
+        if self._streaming:
+            self.cam.stop_streaming()
+            self._streaming = False
+            while not self.frame_queue.empty():
+                frame = self.frame_queue.get(False)
+                self.cam.queue_frame(frame)
+
+    def capture_snapshot(self, timeout_sec=5.0):
+        started_here = not self._streaming
+        if started_here:
+            self.start_video()
+
+        deadline = time.time() + timeout_sec
+        snapshot = None
+        while time.time() < deadline:
+            frame = self.get_frame()
+            if frame is not None:
+                snapshot = frame.as_opencv_image().copy()
+                self.free_frame(frame)
+                break
+            time.sleep(0.01)
+
+        if started_here:
+            self.stop_video()
+
+        if snapshot is None:
+            raise RuntimeError('Could not capture a camera frame for region configuration')
+        return snapshot
 
     def frame_handler(self, cam: Camera, stream: Stream, frame: Frame):
         #print ('frame handler')
@@ -71,7 +104,7 @@ class VimbaCameraController:
 
     def close_resources(self):
         # Close the video writer and any other resources
-        self.cam.stop_streaming()
+        self.stop_video()
         # self.cam.close()
         self.cam.__exit__(None, None, None)
         self.vimba.__exit__(None, None, None)

@@ -2,3 +2,4 @@ __SOFTWARE_VERSION = 'NewValveCalibration V1.0'
 __USE_VIDEO_SIM = True
 __USE_ARDUINO_SIM = True
 __FRAME_RATE_ONLY = True
+__USE_MOUSE_PAIR = True

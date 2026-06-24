@@ -53,6 +53,32 @@ def set_experiment_directory(experiment_name):
             return False
 
 
+def _ensure_subdirectory(directory_name):
+    subdirectory = project_directory + '/' + experiment + '/' + directory_name
+    if os.path.exists(subdirectory) and os.path.isdir(subdirectory):
+        return True
+    else:
+        result = messagebox.askquestion('Directory Warning', f'{directory_name} directory does not exist. Create?', icon='warning')
+        if result == "yes":
+            os.makedirs(subdirectory)
+            return True
+        else:
+            return False
+
+
+def set_mouse_directory(mouse):
+    global experiment, mouse_pair, mouse_id, project_directory
+
+    if mouse == 'Computer1':
+        mouse_id[0] = mouse
+    else:
+        mouse_id[0] = f'm{mouse}'
+
+    mouse_id[1] = ''
+    mouse_pair = mouse_id[0]
+    return _ensure_subdirectory(mouse_pair)
+
+
 def set_mouse_pair_directory(mouse1, mouse2):
     global experiment, mouse_pair, mouse_id, project_directory
 
@@ -68,16 +94,23 @@ def set_mouse_pair_directory(mouse1, mouse2):
         mouse_id[0] = f'm{mouse1}'
         mouse_pair = f'{mouse_id[0]}_{mouse_id[1]}'
 
-    mouse_pair_directory = project_directory + '/' + experiment + '/' + mouse_pair
-    if os.path.exists(mouse_pair_directory) and os.path.isdir(mouse_pair_directory):
-        return True
-    else:
-        result = messagebox.askquestion('Directory Warning', f'{mouse_pair} directory does not exist. Create?', icon='warning')
-        if result == "yes":
-            os.makedirs(mouse_pair_directory)
-            return True
-        else:
+    return _ensure_subdirectory(mouse_pair)
+
+
+def configure_mouse_directory(mouse1, mouse2=None):
+    try:
+        import ModuleConfiguration as config
+        use_mouse_pair = getattr(config, '__USE_MOUSE_PAIR', True)
+    except ImportError:
+        use_mouse_pair = True
+
+    if use_mouse_pair:
+        if mouse2 is None:
+            messagebox.showerror('Configuration Error', 'Mouse pair project requires two mouse ids')
             return False
+        return set_mouse_pair_directory(mouse1, mouse2)
+    else:
+        return set_mouse_directory(mouse1)
 
 
 def set_session_directory(session_type, session_num):

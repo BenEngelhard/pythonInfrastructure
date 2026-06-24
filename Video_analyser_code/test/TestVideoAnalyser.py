@@ -29,7 +29,8 @@ def start_test():
         return
 
     fUtile.set_experiment_directory('Exp1')
-    fUtile.set_mouse_pair_directory('m1', 'm2')
+    if not fUtile.configure_mouse_directory('1', '2'):
+        return
     fUtile.set_session_directory('session', '1')
 
     video_analyzer = Video_Analyzer()
