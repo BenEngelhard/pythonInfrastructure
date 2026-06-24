@@ -1,5 +1,5 @@
-from infrastructure.Video_analyser_code.VideoAnalyzerSim import Video_Analyzer
-from Experiment_Control.MouseMonitor import MouseMonitor
+from VideoAnalyzerSim import Video_Analyzer
+from modelling_opponent.MouseMonitor import MouseMonitor
 import time
 
 
