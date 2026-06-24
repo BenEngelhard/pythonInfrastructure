@@ -2,11 +2,10 @@ import time
 import cv2
 import tkinter as tk
 
-from infrastructure.Video_analyser_code.VideoMouseDetectorMOD import VideoMouseDetectorMOD
-from infrastructure.Video_analyser_code.VideoMouseDetectorAVR import VideoMouseDetectorAVR
-from infrastructure.Video_analyser_code.VideoMouseDetectorCNT import VideoMouseDetectorCNT
-from infrastructure.Video_analyser_code.VimbaCameraController import (VimbaCameraController)
-import infrastructure.Data_analysis.CodeProfiler as Profiler
+from Video_analyser_code.VideoMouseDetectorAVR import VideoMouseDetectorAVR
+from Video_analyser_code.VideoMouseDetectorCNT import VideoMouseDetectorCNT
+from Video_analyser_code.VimbaCameraController import VimbaCameraController
+import Data_analysis.CodeProfiler as Profiler
 
 
 def define_regions():
@@ -104,7 +103,7 @@ def timer_event():
         Profiler.ExitFunction('CV2 Get Image')
 
         Profiler.EnterFunction('Region Handling')
-        if algorithm == 1 or algorithm == 3:
+        if algorithm == 1:
             algorithm_1_detection(frame_image)
         elif algorithm == 2:
             algorithm_2_detection(frame_image)
@@ -129,7 +128,7 @@ def timer_event():
     start_button.after(1, timer_event)
 
 # main program level
-algorithm = 3     # 1 - frame average color, 2 - contour detection, 3 - frame mod color
+algorithm = 1     # 1 - frame average color, 2 - contour detection
 cam = VimbaCameraController()
 regions = define_regions()
 zone_activation = [0] * 6
@@ -139,8 +138,6 @@ if algorithm == 1:
     mouse_detector = [VideoMouseDetectorAVR() for _ in range(len(zone_activation))]
 elif algorithm == 2:
     mouse_detector = VideoMouseDetectorCNT()
-elif algorithm == 3:
-    mouse_detector = [VideoMouseDetectorMOD() for _ in range(len(zone_activation))]
 else:
     print('Algorithm definition error')
     exit()

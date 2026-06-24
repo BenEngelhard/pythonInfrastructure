@@ -2,9 +2,9 @@ import tkinter as tk
 import time
 from tkinter import filedialog
 from tkinter import messagebox
-from infrastructure.Video_analyser_code.VideoAnalyser import Video_Analyzer
-import infrastructure.Data_analysis.FileUtilities as fUtile
-import infrastructure.Data_analysis.CodeProfiler as Profiler
+from Video_analyser_code.VideoAnalyser import Video_Analyzer
+import Data_analysis.FileUtilities as fUtile
+import Data_analysis.CodeProfiler as Profiler
 
 
 def browse_project_directory():

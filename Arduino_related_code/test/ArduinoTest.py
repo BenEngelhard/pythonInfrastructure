@@ -1,4 +1,4 @@
-from infrastructure.ModuleConfiguration import __USE_ARDUINO_SIM
+from Experiment_Launcher_code.ModuleConfiguration import __USE_ARDUINO_SIM
 if __USE_ARDUINO_SIM:
     import Arduino_related_code.ArduinoDigitalSim as arduino
 else:
