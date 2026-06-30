@@ -54,18 +54,6 @@ def save_conf_callback():
         fUtile.set_project_directory(project_directory_var.get())
         fUtile.save_detection_regions(detection_regions)
 
-def define_regions():
-    # Define the regions of interest (ROI) for each mouse and their specific zones
-    regions = {
-        'm1_c': [(445, 110), (480, 240)],  # Mouse 1 Cooperate Zone (Top Left)
-        'm1_cen': [(330, 260), (400, 330)],  # Mouse 1 Center Zone (Center Left)
-        'm1_d': [(425, 370), (470, 480)],  # Mouse 1 Defect Zone (Bottom Left)
-        'm2_c': [(525, 110), (565, 235)],  # Mouse 2 Cooperate Zone (Top Right)
-        'm2_cen': [(610, 260), (680, 330)],  # Mouse 2 Center Zone (Center Right)
-        'm2_d': [(515, 370), (550, 480)],  # Mouse 2 Defect Zone (Bottom Right)
-    }
-    return regions
-
 def get_detection_set(edit_vars):
     return [(edit_vars[0][0].get(), edit_vars[0][1].get()), (edit_vars[1][0].get(), edit_vars[1][1].get())]
 

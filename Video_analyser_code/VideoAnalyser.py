@@ -1,4 +1,5 @@
 #from vmbpy import *
+import copy
 import time
 import cv2
 from infrastructure.Video_analyser_code.VideoWriter import VideoWriter
@@ -7,13 +8,50 @@ from infrastructure.Video_analyser_code.VimbaCameraController import VimbaCamera
 import infrastructure.Data_analysis.FileUtilities as fUtile
 import infrastructure.Data_analysis.CodeProfiler as Profiler
 
+
+
+def _load_saved_regions():
+    saved = fUtile.load_detection_regions()
+    if saved is None:
+        return None
+
+    if isinstance(saved, dict) and 'region_names' in saved and 'regions' in saved:
+        region_names = list(saved['region_names'])
+        raw_regions = saved['regions']
+    elif isinstance(saved, dict):
+        region_names = list(saved.keys())
+        raw_regions = saved
+    else:
+        return None
+
+    regions = {}
+    for key in region_names:
+        corners = raw_regions[key]
+        x1, y1 = int(corners[0][0]), int(corners[0][1])
+        x2, y2 = int(corners[1][0]), int(corners[1][1])
+        regions[key] = (
+            (min(x1, x2), min(y1, y2)),
+            (max(x1, x2), max(y1, y2)),
+        )
+    return regions
+
+
 class Video_Analyzer:
-    def __init__(self):
+    def __init__(self, regions=None, region_resolver=None):
         # Initialize the Vimba SDK and VideoAnalyzer
         self.video_file_loc=fUtile.get_file_path(0) + '_video.avi'
         self.video_writer = VideoWriter(output_file=self.video_file_loc)
         self.cam = VimbaCameraController()
-        self.regions = self.define_regions()
+        self.region_resolver = region_resolver
+        if regions is not None:
+            self.regions = regions
+            self.region_names = list(regions.keys())
+        elif region_resolver is not None:
+            self.regions = region_resolver(self.cam)
+            self.region_names = list(self.regions.keys())
+        else:
+            self.regions = self.define_regions()
+            self.region_names = list(self.regions.keys())
         self.trial_start_time = 0
         self.trial_end_time = None  # Initialize end time
 
@@ -28,16 +66,14 @@ class Video_Analyzer:
         return self.cam.get_dropped_frames()
 
     def define_regions(self):
-        # Define the regions of interest (ROI) for each mouse and their specific zones
-        regions = {
-            'm1_c': [(485, 145), (515, 215)],  # Mouse 2 Cooperate Zone (Top Left)
-            'm1_cen': [(355, 290), (410, 335)],  # Mouse 2 Center Zone (Center Left)
-            'm1_d': [(485, 410), (515, 480)],  # Mouse 2 Defect Zone (Bottom Left)
-            'm2_c': [(540, 145), (570, 215)],  # Mouse 1 Cooperate Zone (Top Right)
-            'm2_cen': [(635, 290), (690, 335)],  # Mouse 1 Center Zone (Center Right)
-            'm2_d': [(540, 410), (570, 480)],  # Adjusted Mouse 1 Defect Zone (Bottom Right)
-        }
-        return regions
+        saved_regions = _load_saved_regions()
+        if saved_regions is not None:
+            return saved_regions
+        return copy.deepcopy(DEFAULT_DETECTION_REGIONS)
+
+    @staticmethod
+    def default_regions():
+        return copy.deepcopy(DEFAULT_DETECTION_REGIONS)
 
     def format_time(self,seconds):
         # Helper function to format seconds into H:M:S format
