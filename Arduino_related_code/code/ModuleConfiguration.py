@@ -1,3 +1,0 @@
-__USE_VIDEO_SIM = False
-__USE_ARDUINO_SIM = False
-__FRAME_RATE_ONLY = False
