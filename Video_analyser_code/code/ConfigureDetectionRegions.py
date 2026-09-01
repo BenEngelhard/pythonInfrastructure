@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
-import Data_analysis.FileUtilities as fUtile
+import infrastructure.Data_analysis.FileUtilities as fUtile
 
 
 def populate_system_parameters_panel(panel, pdVar):

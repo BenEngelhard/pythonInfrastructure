@@ -2,13 +2,13 @@ import tkinter as tk
 import random
 import time
 
-from Experiment_Launcher_code.ModuleConfiguration import __USE_ARDUINO_SIM
+from infrastructure.ModuleConfiguration import __USE_ARDUINO_SIM
 if __USE_ARDUINO_SIM:
-    from Arduino_related_code.ArduinoDigitalSim import *
+    from infrastructure.Arduino_related_code.ArduinoDigitalSim import *
 else:
-    from Arduino_related_code.ArduinoDigital import *
+    from infrastructure.Arduino_related_code.ArduinoDigital import *
 
-from Arduino_related_code.ValveControl import ValveControl
+from infrastructure.Arduino_related_code.ValveControl import ValveControl
 import time
 
 class ValveEntry:
