@@ -1,12 +1,12 @@
 import serial
 import time
 
-comport = 'No Open Port'
+comport = []
 
 def openComPort(portname):
     global comport
 
-    if not comport == portname:
+    if not comport:
         comport = serial.Serial(portname, 9600)
         print(f'Arduino Channel open on Com Port: {portname}')
         time.sleep(3) # Arduino resets itself when the port is opened. Give it time to complete.
