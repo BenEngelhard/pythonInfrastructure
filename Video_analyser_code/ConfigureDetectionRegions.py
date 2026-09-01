@@ -13,10 +13,9 @@ class ConfigureDetectionRegions:
     def __init__(self, roi_name_list):
         ctypes.windll.shcore.SetProcessDpiAwareness(1) # disable window scaling
         self.window = tk.Tk()
-        self.window.title("Prisoner's Dilemma - Detection Regions")
+        self.window.title("Mouse Detection Regions")
         self.window.geometry("978x760")
         self.window.focus_set()
-        self.detection_regions = {name: [0, (0, 0), (0, 0)] for name in roi_name_list}
         self.canvas_rects = {name: [] for name in roi_name_list}
         self.canvas_texts = {name: [] for name in roi_name_list}
         # screen_width = window.winfo_screenwidth()    # future feature
@@ -49,34 +48,22 @@ class ConfigureDetectionRegions:
             self.save_conf_bt.config(state="normal")
 
     def save_conf_callback(self):
-        if self.verify_detection_regions():
+        detection_regions = {}
+        missing_region = False
+        for name in self.canvas_rects:
+            rect_id = self.canvas_rects.get(name)
+            if rect_id:
+                x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
+                x0, x1 = sorted((x0, x1))
+                y0, y1 = sorted((y0, y1))
+                detection_regions[name] = [int(x0), int(y0), int(x1), int(y1)]
+            else:
+                missing_region = True
+                messagebox.showerror("Error", f'{name} is undefined')
+                break
+        if not missing_region:
             fUtile.set_project_directory(self.project_directory_var.get())
-            fUtile.save_detection_regions(self.detection_regions)
-
-    def validate_value(self, edit_var):
-        # region coordinate must be a positive integer
-        try:
-            num = int(edit_var.get())
-        except ValueError:
-            num = -1
-        if num <= 0 or num > 800:
-            messagebox.showerror("Invalid Input", "region coordinate must be positive integer and < 800 ")
-            return False
-        return True
-
-    def verify_detection_set(self, region_vars):
-        data_valid = True
-        for i in range(2):
-            for j in range(2):
-                if not self.validate_value(region_vars[i][j]):
-                    data_valid = False
-
-        if data_valid:
-            if (region_vars[1][0].get() <= region_vars[0][0].get() or
-                region_vars[1][1].get() <= region_vars[0][1].get()):
-                messagebox.showerror("Invalid Input", "region must use X2 > X1 and Y2 > Y1")
-                data_valid = False
-        return data_valid
+            fUtile.save_detection_regions(detection_regions)
 
     def update_video_frame(self):
         frame = self.cam.get_frame()
@@ -88,11 +75,7 @@ class ConfigureDetectionRegions:
             self.video_canvas.img = img_tk
             self.video_canvas.itemconfig(self.img_id, image=img_tk)
             self.cam.free_frame(frame)  # return the buffer to the camera controller
-            #print(threading.current_thread().name)
         self.window.after(1, self.update_video_frame)
-
-    def calibrate_callback(self):
-        pass
 
     # Mouse event handlers
     def start_roi(self, event):   # mouse button pressed on canvas
@@ -140,7 +123,7 @@ class ConfigureDetectionRegions:
 
     def on_down(self, event):
         if self.selected_roi != '':
-            rect_id = rect_id = self.canvas_rects.get(self.selected_roi)
+            rect_id = self.canvas_rects.get(self.selected_roi)
             if rect_id:
                 x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
                 x0, x1 = sorted((x0, x1))
@@ -155,7 +138,7 @@ class ConfigureDetectionRegions:
 
     def on_left(self, event):
         if self.selected_roi != '':
-            rect_id = rect_id = self.canvas_rects.get(self.selected_roi)
+            rect_id = self.canvas_rects.get(self.selected_roi)
             if rect_id:
                 x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
                 x0, x1 = sorted((x0, x1))
@@ -170,7 +153,7 @@ class ConfigureDetectionRegions:
 
     def on_right(self, event):
         if self.selected_roi != '':
-            rect_id = rect_id = self.canvas_rects.get(self.selected_roi)
+            rect_id = self.canvas_rects.get(self.selected_roi)
             if rect_id:
                 x0, y0, x1, y1 = self.video_canvas.coords(rect_id)
                 x0, x1 = sorted((x0, x1))
@@ -202,11 +185,10 @@ class ConfigureDetectionRegions:
         self.populate_system_parameters_panel(system_panel, self.project_directory_var)
 
         #create buttons
-        self.calibrate_bt = tk.Button(control_panel, text="Calibrate", command=self.calibrate_callback)
-        self.calibrate_bt.place(x=870, y=5)
         self.save_conf_bt = tk.Button(control_panel, text="Save", command=self.save_conf_callback)
         self.save_conf_bt.place(x=770, y=5)
-        self.roi_names_combo = ttk.Combobox(control_panel,values=list(self.detection_regions.keys()))
+        self.save_conf_bt.config(state="disabled")
+        self.roi_names_combo = ttk.Combobox(control_panel,values=list(self.canvas_rects.keys()))
         self.roi_names_combo.place(x=500, y=15)
         self.roi_names_combo.bind("<<ComboboxSelected>>", self.on_combo_selected)
 
@@ -243,10 +225,15 @@ class ConfigureDetectionRegions:
         if pd != '':
             self.project_directory_var.set(pd)
             fUtile.set_project_directory(pd)
-            self.save_conf_bt.config(state="normal")
-            tmp = fUtile.load_detection_regions()
-            if tmp is not None:
-                self.detection_regions = tmp
-
-        #self.create_canvas_regions()
+            det_regions = fUtile.load_detection_regions()
+            if det_regions is not None:
+                for name in det_regions:
+                    x0, y0, x1, y1 = det_regions[name]
+                    self.canvas_rects[name] = self.video_canvas.create_rectangle(x0, y0, x1, y1, outline="white", width=2)
+                    self.canvas_texts[name] = self.video_canvas.create_text(x0, y0 - 5, text=name, font=("Arial", 12), anchor="sw", fill="white")
+                    self.save_conf_bt.config(state="normal")
+            else:
+                answer = messagebox.askyesno("Confirm", "Detection regions file does not exist. Initialize?")
+                if answer:
+                    self.save_conf_bt.config(state="normal")
         self.window.mainloop()
